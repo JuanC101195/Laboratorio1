@@ -130,6 +130,56 @@ free(linea);  // Importante: liberar memoria asignada
 
 **Formato de salida:** `[int count (4 bytes)][char (1 byte)]` repetido
 
+**Algoritmo RLE - Diagrama Visual:**
+
+```
+Entrada: "aaaaabbbbbccccc\n"
+
+Paso a paso:
+┌─────────────────────────────────────────────────────────────┐
+│  Input Stream:  a a a a a b b b b b c c c c c \n           │
+│                 ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓            │
+│                                                              │
+│  Proceso:                                                    │
+│  1. Leer 'a', count=1                                        │
+│  2. Leer 'a', mismo → count=2                                │
+│  3. Leer 'a', mismo → count=3                                │
+│  4. Leer 'a', mismo → count=4                                │
+│  5. Leer 'a', mismo → count=5                                │
+│  6. Leer 'b', diferente! → ESCRIBIR [5][a], count=1, prev=b │
+│  7. Leer 'b', mismo → count=2                                │
+│  ...                                                         │
+│  10. Leer 'b', mismo → count=5                               │
+│  11. Leer 'c', diferente! → ESCRIBIR [5][b], count=1        │
+│  ...                                                         │
+│  16. EOF → ESCRIBIR [1][\n]                                  │
+└─────────────────────────────────────────────────────────────┘
+
+Output Binario (hexdump):
+┌────────────────────────────────────────────────┐
+│ 05 00 00 00 │ 61 │  →  [5 veces 'a']         │
+│ 05 00 00 00 │ 62 │  →  [5 veces 'b']         │
+│ 05 00 00 00 │ 63 │  →  [5 veces 'c']         │
+│ 01 00 00 00 │ 0a │  →  [1 vez '\n']          │
+└────────────────────────────────────────────────┘
+   4 bytes    1 byte
+   (int)      (char)
+```
+
+**Ventajas:**
+- ✅ Muy eficiente para datos con repeticiones
+- ✅ Formato binario compacto (5 bytes por grupo)
+- ✅ Fácil de implementar y entender
+
+**Ejemplo de compresión:**
+
+| Input | Output Binario | Compresión |
+|-------|----------------|------------|
+| `"aaaa"` (4 bytes) | `[4][a]` (5 bytes) | -25% (peor) |
+| `"aaaaaaaaaa"` (10 bytes) | `[10][a]` (5 bytes) | 50% mejor |
+| `"aaaaabbbbbccccc"` (15 bytes) | `[5][a][5][b][5][c]` (15 bytes) | 0% (igual) |
+| `aaaa...` (1000 a's) | `[1000][a]` (5 bytes) | 99.5% mejor! |
+
 **Características clave:**
 - Escribe en formato binario con `fwrite()`
 - Contador de tipo `int` (4 bytes) para soportar secuencias largas
@@ -141,12 +191,6 @@ free(linea);  // Importante: liberar memoria asignada
 // Escribir contador (4 bytes) + carácter (1 byte) en binario
 fwrite(&count, sizeof(int), 1, stdout);  // int = 4 bytes
 fwrite(&prev, sizeof(char), 1, stdout);  // char = 1 byte
-```
-
-**Ejemplo:**
-```
-Input:  "aaaaabbbbbccccc"
-Output: [5][a][5][b][5][c][1][\n]  (en binario)
 ```
 
 ---
