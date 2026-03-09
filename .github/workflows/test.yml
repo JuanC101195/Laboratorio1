@@ -1,0 +1,57 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v3
+    
+    - name: Instalar GCC
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc make
+    
+    - name: Compilar programas
+      run: make
+    
+    - name: Verificar ejecutables
+      run: |
+        ls -lh bin/
+        file bin/wcat bin/wgrep bin/wzip bin/wunzip
+    
+    - name: Prueba wcat
+      run: |
+        ./bin/wcat data/archivo1.txt > /tmp/test_wcat.txt
+        test -s /tmp/test_wcat.txt && echo "✓ wcat funciona"
+    
+    - name: Prueba wgrep
+      run: |
+        ./bin/wgrep mundo data/prueba_grep.txt > /tmp/test_grep.txt
+        test -s /tmp/test_grep.txt && echo "✓ wgrep funciona"
+    
+    - name: Prueba wzip/wunzip
+      run: |
+        ./bin/wzip data/repite.txt > /tmp/test.z
+        ./bin/wunzip /tmp/test.z > /tmp/test_unzip.txt
+        diff data/repite.txt /tmp/test_unzip.txt && echo "✓ wzip/wunzip funciona"
+    
+    - name: Prueba de integridad
+      run: |
+        for file in data/archivo1.txt data/archivo2.txt data/repite.txt; do
+          ./bin/wzip "$file" > /tmp/temp.z
+          ./bin/wunzip /tmp/temp.z > /tmp/temp.txt
+          diff "$file" /tmp/temp.txt && echo "✓ Integridad OK: $file"
+        done
+    
+    - name: Pruebas de errores
+      run: |
+        ./bin/wcat noexiste.txt 2>&1 | grep -q "cannot open file" && echo "✓ Error handling OK"
+        ./bin/wgrep 2>&1 | grep -q "searchterm" && echo "✓ wgrep args validation OK"
