@@ -1,0 +1,6 @@
+Hola mundo
+esta línea tiene mundo
+MUNDO en mayúsculas
+línea sin la palabra
+hola otra vez
+mundo aquí también
