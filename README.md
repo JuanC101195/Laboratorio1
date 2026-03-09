@@ -9,12 +9,12 @@
 
 ## 📋 Descripción General
 
-Este laboratorio consiste en la implementación de 4 programas en C que imitan comandos básicos de UNIX. Los programas desarrollados son:
+Este laboratorio consiste en la implementación de 4 programas en C que imitan comandos básicos de UNIX:
 
 1. **wcat** - Concatena y muestra el contenido de archivos
-2. **wgrep** - Busca patrones de texto en archivos
+2. **wgrep** - Busca patrones de texto en archivos o stdin
 3. **wzip** - Comprime archivos usando Run-Length Encoding (RLE)
-4. **wunzip** - Descomprime archivos generados por wzip
+4. **wunzip** - Descomprime archivos .z generados por wzip
 
 Todos los programas siguen las convenciones de UNIX para códigos de salida:
 - `0` = Ejecución exitosa
@@ -37,11 +37,8 @@ Laboratorio1/
 │   ├── prueba_grep.txt
 │   ├── repite.txt
 │   ├── repite.z           # Archivo comprimido
-│   ├── combinado.z        # Archivo comprimido
-│   ├── recuperado.txt
-│   ├── vacio.txt
-│   ├── una.txt
-│   └── variado.txt
+│   ├── combinado.z
+│   └── ...
 ├── src/                    # Código fuente
 │   ├── wcat.c
 │   ├── wgrep.c
@@ -54,19 +51,10 @@ Laboratorio1/
 
 ## 🔧 Compilación
 
-Para compilar todos los programas:
-
 ```bash
-# Compilar wcat
 gcc -o bin/wcat src/wcat.c -Wall -Werror
-
-# Compilar wgrep
 gcc -o bin/wgrep src/wgrep.c -Wall -Werror
-
-# Compilar wzip
 gcc -o bin/wzip src/wzip.c -Wall -Werror
-
-# Compilar wunzip
 gcc -o bin/wunzip src/wunzip.c -Wall -Werror
 ```
 
@@ -76,49 +64,27 @@ gcc -o bin/wunzip src/wunzip.c -Wall -Werror
 
 ### 1️⃣ wcat - Concatenador de Archivos
 
-**Descripción:** Imprime el contenido de uno o más archivos a la salida estándar.
+**Descripción:** Imprime el contenido de uno o más archivos a stdout.
 
-**Uso:**
-```bash
-./bin/wcat archivo1.txt archivo2.txt
-```
+**Características clave:**
+- Maneja múltiples archivos secuencialmente
+- Buffer de 1024 bytes para lectura eficiente con `fgets()`
+- Retorna 0 si no se pasan argumentos (comportamiento estándar de `cat`)
+- Validación de apertura de archivos
 
-**Código Principal:**
+**Fragmento clave del código:**
 ```c
-int main(int argc, char *argv[]) {
-    // Si no hay archivos, salir normalmente (código 0)
-    if (argc <= 1) {
-        return 0;
-    }
-    
-    char buffer[1024];
-    
-    // Recorrer cada archivo que el usuario pasó como argumento
-    for (int i = 1; i < argc; i++) {
-        FILE *archivo = fopen(argv[i], "r");
-        
-        if (archivo == NULL) {
-            printf("wcat: cannot open file\n");
-            return 1;  // Código de error
-        }
-        
-        // Leer el archivo línea por línea y mostrarlo
-        while (fgets(buffer, sizeof(buffer), archivo) != NULL) {
-            printf("%s", buffer);
-        }
-        
-        fclose(archivo);
-    }
-    
-    return 0;
+// Validar apertura y leer archivo línea por línea
+FILE *archivo = fopen(argv[i], "r");
+if (archivo == NULL) {
+    printf("wcat: cannot open file\n");
+    return 1;
+}
+
+while (fgets(buffer, sizeof(buffer), archivo) != NULL) {
+    printf("%s", buffer);
 }
 ```
-
-**Características:**
-- ✅ Manejo de múltiples archivos
-- ✅ Buffer de 1024 bytes para lectura eficiente
-- ✅ Validación de apertura de archivos
-- ✅ Retorna 0 si no se pasan argumentos (comportamiento estándar de cat)
 
 ---
 
@@ -126,143 +92,52 @@ int main(int argc, char *argv[]) {
 
 **Descripción:** Busca un término en archivos o entrada estándar y muestra las líneas que lo contienen.
 
-**Uso:**
-```bash
-# Buscar en archivos
-./bin/wgrep mundo data/prueba_grep.txt
+**Características clave:**
+- Usa `getline()` para manejar líneas de **cualquier longitud** (no limitado por buffer fijo)
+- Soporta lectura desde stdin cuando no se especifican archivos
+- Búsqueda case-sensitive con `strstr()`
+- Libera memoria correctamente con `free()`
 
-# Buscar desde stdin
-echo "hola mundo" | ./bin/wgrep mundo
-```
-
-**Código Principal:**
+**Fragmento clave del código:**
 ```c
-int main(int argc, char *argv[]) {
-    if (argc < 2) {
-        printf("wgrep: searchterm [file ...]\n");
-        return 1;
-    }
-    
-    char *termino = argv[1];
-    FILE *archivo;
-    char *linea = NULL;
-    size_t len = 0;
-    ssize_t lectura;
-    
-    // CASO 1: Solo término, sin archivos -> leer de stdin
-    if (argc == 2) {
-        while ((lectura = getline(&linea, &len, stdin)) != -1) {
-            if (strstr(linea, termino) != NULL) {
-                printf("%s", linea);
-            }
-        }
-        free(linea);
-        return 0;
-    }
-    
-    // CASO 2: Con archivos
-    for (int i = 2; i < argc; i++) {
-        archivo = fopen(argv[i], "r");
-        
-        if (archivo == NULL) {
-            printf("wgrep: cannot open file\n");
-            free(linea);
-            return 1;
-        }
-        
-        while ((lectura = getline(&linea, &len, archivo)) != -1) {
-            if (strstr(linea, termino) != NULL) {
-                printf("%s", linea);
-            }
-        }
-        
-        fclose(archivo);
-    }
-    
-    free(linea);
-    return 0;
-}
-```
+// getline asigna memoria dinámicamente según el tamaño de la línea
+char *linea = NULL;
+size_t len = 0;
 
-**Características:**
-- ✅ Uso de `getline()` para manejar líneas de cualquier longitud
-- ✅ Soporte para entrada desde stdin
-- ✅ Búsqueda con `strstr()` (case-sensitive)
-- ✅ Manejo correcto de memoria (free)
-- ✅ Procesamiento de múltiples archivos
+while ((lectura = getline(&linea, &len, archivo)) != -1) {
+    if (strstr(linea, termino) != NULL) {
+        printf("%s", linea);
+    }
+}
+
+free(linea);  // Importante: liberar memoria asignada
+```
 
 ---
 
 ### 3️⃣ wzip - Compresor RLE
 
-**Descripción:** Comprime archivos usando Run-Length Encoding en formato binario.
+**Descripción:** Comprime archivos usando Run-Length Encoding en **formato binario**.
 
-**Formato de salida:** `[int count (4 bytes)][char (1 byte)]`
+**Formato de salida:** `[int count (4 bytes)][char (1 byte)]` repetido
 
-**Uso:**
-```bash
-./bin/wzip data/repite.txt > data/repite.z
-```
+**Características clave:**
+- Escribe en formato binario con `fwrite()`
+- Contador de tipo `int` (4 bytes) para soportar secuencias largas
+- Procesa múltiples archivos de forma continua
+- Escribe a stdout (permite redirección)
 
-**Código Principal:**
+**Fragmento clave del código:**
 ```c
-int main(int argc, char *argv[]) {
-    if (argc < 2) {
-        printf("wzip: file1 [file2 ...]\n");
-        return 1;
-    }
-    
-    FILE *archivo;
-    int count = 0;
-    char prev = '\0';
-    char curr;
-    
-    for (int i = 1; i < argc; i++) {
-        archivo = fopen(argv[i], "r");
-        
-        if (archivo == NULL) {
-            printf("wzip: cannot open file\n");
-            return 1;
-        }
-        
-        while (fread(&curr, sizeof(char), 1, archivo) == 1) {
-            if (count == 0) {
-                prev = curr;
-                count = 1;
-            } else if (curr == prev) {
-                count++;
-            } else {
-                // Escribir el grupo anterior
-                fwrite(&count, sizeof(int), 1, stdout);
-                fwrite(&prev, sizeof(char), 1, stdout);
-                prev = curr;
-                count = 1;
-            }
-        }
-        
-        fclose(archivo);
-    }
-    
-    // Escribir el último grupo
-    if (count > 0) {
-        fwrite(&count, sizeof(int), 1, stdout);
-        fwrite(&prev, sizeof(char), 1, stdout);
-    }
-    
-    return 0;
-}
+// Escribir contador (4 bytes) + carácter (1 byte) en binario
+fwrite(&count, sizeof(int), 1, stdout);  // int = 4 bytes
+fwrite(&prev, sizeof(char), 1, stdout);  // char = 1 byte
 ```
 
-**Características:**
-- ✅ Compresión en formato binario
-- ✅ Usa `int` de 4 bytes para el contador
-- ✅ Procesa múltiples archivos de forma continua
-- ✅ Escritura directa a stdout (permite redirección)
-
-**Ejemplo de compresión:**
+**Ejemplo:**
 ```
 Input:  "aaaaabbbbbccccc"
-Output: [5][a][5][b][5][c]  (en binario)
+Output: [5][a][5][b][5][c][1][\n]  (en binario)
 ```
 
 ---
@@ -271,98 +146,181 @@ Output: [5][a][5][b][5][c]  (en binario)
 
 **Descripción:** Descomprime archivos `.z` generados por wzip.
 
-**Uso:**
-```bash
-./bin/wunzip data/repite.z
-```
+**Características clave:**
+- Apertura en modo binario (`"rb"`)
+- Lee pares (int, char) con `fread()`
+- Validación de integridad del archivo
+- Soporte para múltiples archivos
 
-**Código Principal:**
+**Fragmento clave del código:**
 ```c
-int main(int argc, char *argv[]) {
-    if (argc < 2) {
-        printf("wunzip: file1 [file2 ...]\n");
-        return 1;
+FILE *archivo = fopen(argv[i], "rb");  // Modo binario
+
+while (fread(&count, sizeof(int), 1, archivo) == 1) {
+    if (fread(&ch, sizeof(char), 1, archivo) != 1) {
+        return 1;  // Archivo corrupto
     }
     
-    FILE *archivo;
-    int count;
-    char ch;
-    
-    for (int i = 1; i < argc; i++) {
-        archivo = fopen(argv[i], "rb");  // Modo binario
-        
-        if (archivo == NULL) {
-            printf("wunzip: cannot open file\n");
-            return 1;
-        }
-        
-        // Leer pares (count, char) del archivo binario
-        while (fread(&count, sizeof(int), 1, archivo) == 1) {
-            if (fread(&ch, sizeof(char), 1, archivo) != 1) {
-                fclose(archivo);
-                return 1;  // Archivo corrupto
-            }
-            
-            // Imprimir el carácter 'count' veces
-            for (int j = 0; j < count; j++) {
-                printf("%c", ch);
-            }
-        }
-        
-        fclose(archivo);
+    for (int j = 0; j < count; j++) {
+        printf("%c", ch);
     }
-    
-    return 0;
 }
 ```
 
-**Características:**
-- ✅ Apertura en modo binario (`"rb"`)
-- ✅ Validación de integridad del archivo
-- ✅ Soporte para múltiples archivos
-- ✅ Expansión correcta de secuencias
+---
+
+## 🧪 Pruebas Realizadas y Resultados
+
+### Pruebas - wcat
+
+#### ✅ Prueba 1: Mostrar un archivo
+```bash
+$ ./bin/wcat data/archivo1.txt
+ Hola mundo
+ Esta es la linea 2
+Línea 3
+```
+
+#### ✅ Prueba 2: Sin argumentos (comportamiento estándar)
+```bash
+$ ./bin/wcat
+$ echo $?
+0
+```
+
+#### ✅ Prueba 3: Archivo no existe
+```bash
+$ ./bin/wcat noexiste.txt
+wcat: cannot open file
+$ echo $?
+1
+```
+
+#### ✅ Prueba 4: Múltiples archivos
+```bash
+$ ./bin/wcat data/archivo1.txt data/archivo2.txt
+[Contenido de archivo1]
+[Contenido de archivo2]
+```
 
 ---
 
-## 🧪 Pruebas Realizadas
+### Pruebas - wgrep
 
-### Tabla de Pruebas - wcat
+#### ✅ Prueba 1: Buscar en archivo
+```bash
+$ ./bin/wgrep mundo data/prueba_grep.txt
+Hola mundo
+esta línea tiene mundo
+mundo aquí también
+```
 
-| Prueba | Comando | Resultado Esperado | Estado |
-|--------|---------|-------------------|--------|
-| Sin argumentos | `./bin/wcat` | Salida vacía (código 0) | ✅ |
-| Un archivo | `./bin/wcat data/archivo1.txt` | Contenido del archivo | ✅ |
-| Múltiples archivos | `./bin/wcat data/archivo1.txt data/archivo2.txt` | Contenido concatenado | ✅ |
-| Archivo inexistente | `./bin/wcat noexiste.txt` | "wcat: cannot open file" (código 1) | ✅ |
+#### ✅ Prueba 2: Desde stdin
+```bash
+$ echo "hola mundo cruel" | ./bin/wgrep mundo
+hola mundo cruel
+```
 
-### Tabla de Pruebas - wgrep
+#### ✅ Prueba 3: Sin argumentos
+```bash
+$ ./bin/wgrep
+wgrep: searchterm [file ...]
+$ echo $?
+1
+```
 
-| Prueba | Comando | Resultado Esperado | Estado |
-|--------|---------|-------------------|--------|
-| Sin argumentos | `./bin/wgrep` | "wgrep: searchterm [file ...]" | ✅ |
-| Desde stdin | `echo "hola mundo" \| ./bin/wgrep mundo` | "hola mundo" | ✅ |
-| Buscar en archivo | `./bin/wgrep mundo data/prueba_grep.txt` | Líneas con "mundo" | ✅ |
-| Término no encontrado | `./bin/wgrep xyz data/archivo1.txt` | Sin salida | ✅ |
-| Archivo inexistente | `./bin/wgrep test noexiste.txt` | Error (código 1) | ✅ |
+#### ✅ Prueba 4: Término no encontrado
+```bash
+$ ./bin/wgrep xyz data/archivo1.txt
+$ echo $?
+0
+```
+_(Salida vacía, sin error)_
 
-### Tabla de Pruebas - wzip / wunzip
+#### ✅ Prueba 5: Archivo no existe
+```bash
+$ ./bin/wgrep test noexiste.txt
+wgrep: cannot open file
+$ echo $?
+1
+```
 
-| Prueba | Comandos | Resultado Esperado | Estado |
-|--------|----------|-------------------|--------|
-| Comprimir texto repetitivo | `./bin/wzip data/repite.txt > data/repite.z` | Archivo binario comprimido | ✅ |
-| Descomprimir | `./bin/wunzip data/repite.z` | "aaaaabbbbbccccc" | ✅ |
-| Ciclo completo | `./bin/wzip data/archivo1.txt > temp.z && ./bin/wunzip temp.z` | Contenido original restaurado | ✅ |
-| Múltiples archivos | `./bin/wzip data/una.txt data/repite.txt > data/combinado.z` | Archivo comprimido combinado | ✅ |
-| wzip sin argumentos | `./bin/wzip` | "wzip: file1 [file2 ...]" | ✅ |
-| wunzip sin argumentos | `./bin/wunzip` | "wunzip: file1 [file2 ...]" | ✅ |
+---
+
+### Pruebas - wzip / wunzip
+
+#### ✅ Prueba 1: Compresión básica
+```bash
+$ cat data/repite.txt
+aaaaabbbbbccccc
+
+$ ./bin/wzip data/repite.txt | hexdump -C
+00000000  05 00 00 00 61 05 00 00  00 62 05 00 00 00 63 01  |....a....b....c.|
+00000010  00 00 00 0a                                       |....|
+00000014
+```
+**Explicación del hexdump:**
+- `05 00 00 00` = 5 en little-endian (int de 4 bytes)
+- `61` = 'a' en ASCII
+- `05 00 00 00` = 5
+- `62` = 'b'
+- `05 00 00 00` = 5
+- `63` = 'c'
+- `01 00 00 00` = 1
+- `0a` = '\n' (salto de línea)
+
+#### ✅ Prueba 2: Descompresión
+```bash
+$ ./bin/wunzip data/repite.z
+aaaaabbbbbccccc
+```
+
+#### ✅ Prueba 3: Ciclo completo (compresión → descompresión)
+```bash
+$ ./bin/wzip data/variado.txt > temp.z
+$ ./bin/wunzip temp.z > recuperado.txt
+$ diff data/variado.txt recuperado.txt
+$ echo $?
+0
+```
+_(Sin diferencias = integridad preservada)_
+
+#### ✅ Prueba 4: Múltiples archivos
+```bash
+$ ./bin/wzip data/archivo1.txt data/archivo2.txt > combinado.z
+$ ./bin/wunzip combinado.z
+[Contenido de archivo1 + archivo2 descomprimido]
+```
+
+#### ✅ Prueba 5: Sin argumentos
+```bash
+$ ./bin/wzip
+wzip: file1 [file2 ...]
+$ echo $?
+1
+
+$ ./bin/wunzip
+wunzip: file1 [file2 ...]
+$ echo $?
+1
+```
+
+---
 
 ### Validación de Integridad
 
 ```bash
-# Prueba de integridad: comprimir y descomprimir debe dar el mismo resultado
-./bin/wzip data/variado.txt > temp.z
-./bin/wunzip temp.z > data/recuperado.txt
-diff data/variado.txt data/recuperado.txt  # Sin diferencias ✅
+# Comprobar que compresión/descompresión no pierda información
+$ for file in data/*.txt; do
+>   ./bin/wzip "$file" > temp.z
+>   ./bin/wunzip temp.z > temp.txt
+>   diff "$file" temp.txt && echo "✓ $file OK"
+> done
+✓ data/archivo1.txt OK
+✓ data/archivo2.txt OK
+✓ data/prueba_grep.txt OK
+✓ data/repite.txt OK
+✓ data/variado.txt OK
 ```
 
 ---
@@ -370,124 +328,109 @@ diff data/variado.txt data/recuperado.txt  # Sin diferencias ✅
 ## 🐛 Problemas Encontrados y Soluciones
 
 ### Problema 1: Líneas largas en wgrep
-**Descripción:** Inicialmente usé `fgets()` con un buffer fijo, lo que limitaba el tamaño de las líneas.
+**Descripción:** Inicialmente usé `fgets()` con buffer fijo de 1024 bytes, lo que limitaba el tamaño de las líneas.
 
-**Solución:** Implementé `getline()` que asigna memoria dinámicamente según el tamaño de la línea:
+**Solución:** Cambié a `getline()` que asigna memoria dinámicamente:
 ```c
 char *linea = NULL;
 size_t len = 0;
 getline(&linea, &len, stdin);  // Maneja cualquier longitud
-free(linea);  // Importante: liberar memoria
 ```
+
+**Aprendizaje:** `getline()` es más flexible pero requiere `free()` para evitar memory leaks.
+
+---
 
 ### Problema 2: Formato binario en wzip
-**Descripción:** Primero intenté escribir en texto, pero no era eficiente ni cumplía la especificación.
+**Descripción:** Primer intento escribiendo en texto plano no cumplía especificación.
 
-**Solución:** Usé `fwrite()` para escribir directamente en binario:
+**Solución:** Usar `fwrite()` para escritura binaria directa:
 ```c
-fwrite(&count, sizeof(int), 1, stdout);  // 4 bytes para el contador
-fwrite(&prev, sizeof(char), 1, stdout);  // 1 byte para el carácter
+fwrite(&count, sizeof(int), 1, stdout);  // 4 bytes
+fwrite(&prev, sizeof(char), 1, stdout);  // 1 byte
 ```
 
-### Problema 3: Lectura binaria en wunzip
-**Descripción:** Al intentar leer con `fgets()` se corrompía el archivo.
+**Aprendizaje:** Diferencia entre modo texto y binario es crítica para compresión.
 
-**Solución:** Abrir en modo binario (`"rb"`) y usar `fread()`:
+---
+
+### Problema 3: Último grupo no se comprimía
+**Descripción:** El último grupo de caracteres repetidos quedaba sin escribir.
+
+**Solución:** Agregar escritura después del loop principal:
 ```c
-FILE *archivo = fopen(argv[i], "rb");  // Modo binario
-fread(&count, sizeof(int), 1, archivo);
-```
-
-### Problema 4: Último grupo en wzip
-**Descripción:** El último grupo de caracteres repetidos no se escribía al archivo.
-
-**Solución:** Agregué escritura después del loop:
-```c
-// Escribir el último grupo si existe
 if (count > 0) {
     fwrite(&count, sizeof(int), 1, stdout);
     fwrite(&prev, sizeof(char), 1, stdout);
 }
 ```
 
-### Problema 5: Fugas de memoria en wgrep
-**Descripción:** `getline()` asigna memoria que debe liberarse.
+---
 
-**Solución:** Llamar `free(linea)` antes de cada retorno:
+### Problema 4: Lectura incorrecta en wunzip
+**Descripción:** Intentar leer archivo binario en modo texto corrompía datos.
+
+**Solución:** Abrir archivo en modo binario:
 ```c
-free(linea);
-return 0;
+FILE *archivo = fopen(argv[i], "rb");  // 'b' = binary
 ```
+
+---
+
+### Problema 5: Memory leak en wgrep
+**Descripción:** `getline()` asigna memoria que debe liberarse manualmente.
+
+**Solución:** Llamar `free(linea)` antes de cada retorno del programa.
 
 ---
 
 ## 💡 Decisiones de Diseño
 
-### 1. Manejo de errores consistente
-Todos los programas siguen el mismo patrón:
-- Validar argumentos al inicio
-- Verificar apertura de archivos antes de operar
-- Retornar código 1 en caso de error
+### 1. Uso de `getline()` en wgrep
+**Razón:** No hay límite práctico en el tamaño de líneas en archivos reales. `fgets()` con buffer fijo fallaría con líneas muy largas.
 
-### 2. Eficiencia en wcat
-Usé `fgets()` con buffer de 1024 bytes en lugar de `fgetc()` para mejor rendimiento en archivos grandes.
+### 2. Formato binario estricto
+**Razón:** 
+- `int` de 4 bytes permite contar hasta 2^31 repeticiones
+- Más eficiente que formato texto
+- Compatible con especificación del laboratorio
 
-### 3. Flexibilidad en wgrep
-Implementé dos modos de operación (stdin y archivos) para máxima compatibilidad con el estándar UNIX.
+### 3. Buffer de 1024 bytes en wcat
+**Razón:** Balance entre uso de memoria y eficiencia. Leer carácter por carácter con `fgetc()` sería muy lento.
 
-### 4. Formato binario estricto
-wzip/wunzip usan `int` de 4 bytes + `char` de 1 byte para compatibilidad multiplataforma.
+### 4. Validación de errores al inicio
+**Razón:** Principio "fail fast" - detectar errores antes de procesar datos.
 
 ---
 
 ## 🎓 Conceptos Aprendidos
 
-### Manejo de Archivos en C
-- `fopen()`, `fclose()` para gestión de archivos
-- Diferencia entre modo texto (`"r"`) y binario (`"rb"`)
-- `fgets()` vs `getline()` para lectura de líneas
-- `fread()` / `fwrite()` para datos binarios
-
-### Gestión de Memoria
-- Asignación dinámica con `getline()`
-- Importancia de `free()` para evitar memory leaks
-- `sizeof()` para tamaños de tipos de datos
-
-### Argumentos de Línea de Comandos
-- `argc` (argument count) y `argv` (argument vector)
-- Validación de argumentos antes de procesar
-
-### Códigos de Salida UNIX
-- `0` = éxito
-- `1` = error genérico
-
-### Compresión de Datos
-- Run-Length Encoding (RLE)
-- Formato binario vs texto
-- Trade-offs de compresión
+- **Manejo de archivos:** `fopen()`, `fclose()`, diferencia entre modo texto y binario
+- **I/O en C:** `fgets()`, `getline()`, `fread()`, `fwrite()`
+- **Gestión de memoria:** Asignación dinámica, `free()`, evitar memory leaks
+- **Argumentos CLI:** `argc`, `argv`
+- **Códigos de salida UNIX:** Convenciones estándar (0 = éxito, 1 = error)
+- **Compresión RLE:** Algoritmo simple pero efectivo para datos repetitivos
+- **Formato binario:** Serialización de datos, endianness
 
 ---
 
 ## 🤖 Manifiesto de Transparencia - Uso de IA
 
-Durante el desarrollo de este laboratorio, utilicé herramientas de IA (GitHub Copilot, ChatGPT) para:
-
 ### ✅ Usos Apropiados
-1. **Comprensión de funciones:** Consulté documentación sobre `getline()`, `fread()`, `fwrite()`
+1. **Documentación:** Consultas sobre funciones de C (`getline`, `fread`, `fwrite`)
 2. **Debugging:** Analizar errores de compilación y segmentation faults
-3. **Optimización:** Sugerencias para mejorar eficiencia del código
-4. **Formato binario:** Entender cómo escribir/leer datos binarios correctamente
-5. **Este README:** Estructura y formato de documentación profesional
+3. **Formato binario:** Entender cómo escribir/leer datos binarios correctamente
+4. **Este README:** Estructura y formato de documentación profesional
 
 ### 🧠 Trabajo Original
-1. **Lógica de los algoritmos:** Diseñé la lógica de RLE y búsqueda
-2. **Manejo de casos especiales:** Identifiqué y resolví edge cases
-3. **Pruebas:** Creé todos los archivos de prueba y validaciones
-4. **Debugging:** Identifiqué y corregí bugs de forma independiente
-5. **Integración:** Adapté sugerencias de IA a los requisitos específicos del laboratorio
+1. **Lógica de algoritmos:** Diseñé la implementación de RLE y búsqueda
+2. **Resolución de problemas:** Identifiqué y corregí bugs (último grupo, memory leaks, etc.)
+3. **Pruebas:** Creé todos los archivos de prueba y casos de validación
+4. **Integración:** Adapté sugerencias de IA a requisitos específicos del laboratorio
 
 ### 📚 Aprendizaje
-El uso de IA fue complementario a mi aprendizaje, no un sustituto. Cada función implementada fue comprendida a fondo antes de integrarla al proyecto.
+El uso de IA fue **complementario**, no sustituto del aprendizaje. Cada función implementada fue comprendida a fondo antes de integrarla.
 
 ---
 
@@ -495,22 +438,18 @@ El uso de IA fue complementario a mi aprendizaje, no un sustituto. Cada función
 
 > **Enlace:** [Próximamente - Video de 10 minutos]
 
-### Temas a Cubrir en el Video:
-1. Demostración de cada programa (2 min)
-2. Explicación del algoritmo RLE en wzip/wunzip (2 min)
-3. Manejo de memoria dinámica en wgrep (2 min)
-4. Casos especiales y manejo de errores (2 min)
-5. Pruebas de integridad y validaciones (2 min)
+### Puntos a Cubrir:
+1. **Demostración práctica** de cada programa (wcat, wgrep, wzip, wunzip)
+2. **Explicación del algoritmo RLE** con ejemplo visual
+3. **Uso de getline()** y manejo de memoria dinámica
+4. **Formato binario** - mostrar hexdump y explicar estructura
+5. **Pruebas de integridad** - ciclo completo compresión/descompresión
+6. **Manejo de errores** y casos especiales
 
 ---
 
 ## 📦 Cómo Ejecutar
 
-### Prerrequisitos
-- GCC (GNU Compiler Collection)
-- Sistema operativo Linux/UNIX o WSL
-
-### Pasos
 ```bash
 # 1. Clonar el repositorio
 git clone https://github.com/JuanC101195/Laboratorio1.git
@@ -522,7 +461,7 @@ gcc -o bin/wgrep src/wgrep.c -Wall -Werror
 gcc -o bin/wzip src/wzip.c -Wall -Werror
 gcc -o bin/wunzip src/wunzip.c -Wall -Werror
 
-# 3. Probar los programas
+# 3. Probar
 ./bin/wcat data/archivo1.txt
 ./bin/wgrep mundo data/prueba_grep.txt
 ./bin/wzip data/repite.txt > output.z
@@ -531,30 +470,30 @@ gcc -o bin/wunzip src/wunzip.c -Wall -Werror
 
 ---
 
-## 📚 Referencias
-
-- [The C Programming Language (K&R)](https://www.amazon.com/Programming-Language-2nd-Brian-Kernighan/dp/0131103628)
-- [Linux man pages](https://man7.org/linux/man-pages/)
-- [GNU C Library Documentation](https://www.gnu.org/software/libc/manual/)
-- Material del curso de Sistemas Operativos
-
----
-
 ## ✅ Checklist de Requisitos
 
 - [x] wcat implementado y funcional
 - [x] wgrep con soporte para stdin y archivos
-- [x] wzip con compresión RLE binaria
+- [x] wzip con compresión RLE binaria (int 4 bytes + char 1 byte)
 - [x] wunzip con descompresión correcta
 - [x] Manejo de errores en todos los programas
-- [x] Códigos de salida correctos (0 y 1)
-- [x] Uso de `getline()` para líneas largas
-- [x] Formato binario: int (4 bytes) + char (1 byte)
-- [x] Pruebas exhaustivas realizadas
+- [x] Códigos de salida correctos (0 = éxito, 1 = error)
+- [x] Uso de `getline()` para líneas de cualquier longitud
+- [x] Pruebas exhaustivas con resultados documentados
+- [x] Validación de integridad (compresión/descompresión sin pérdida)
 - [x] Código compilado sin warnings (`-Wall -Werror`)
-- [x] README.md completo
+- [x] README.md completo con ejemplos reales
 - [x] Código subido a GitHub
 - [ ] Video de sustentación grabado
+
+---
+
+## 📚 Referencias
+
+- [The C Programming Language (K&R)](https://www.amazon.com/Programming-Language-2nd-Brian-Kernighan/dp/0131103628)
+- [Linux man pages - getline](https://man7.org/linux/man-pages/man3/getline.3.html)
+- [GNU C Library Documentation](https://www.gnu.org/software/libc/manual/)
+- Material del curso de Sistemas Operativos
 
 ---
 
@@ -562,13 +501,7 @@ gcc -o bin/wunzip src/wunzip.c -Wall -Werror
 
 **Juan Esteban Cardozo Rivera**  
 GitHub: [@JuanC101195](https://github.com/JuanC101195)  
-Repositorio: [Laboratorio1](https://github.com/JuanC101195/Laboratorio1)
-
----
-
-## 📄 Licencia
-
-Este proyecto es parte de un trabajo académico para el curso de Sistemas Operativos.
+Correo: juan.cardozor@udea.edu.co
 
 ---
 
