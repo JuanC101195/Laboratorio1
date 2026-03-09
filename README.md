@@ -7,6 +7,7 @@
 
 ## 🔧 Tecnologías
 
+![Tests](https://github.com/JuanC101195/Laboratorio1/actions/workflows/test.yml/badge.svg)
 ![C](https://img.shields.io/badge/Language-C-blue?logo=c)
 ![GCC](https://img.shields.io/badge/Compiler-GCC-green)
 ![Linux](https://img.shields.io/badge/OS-Linux-yellow?logo=linux)
