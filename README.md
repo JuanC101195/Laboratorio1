@@ -1,6 +1,6 @@
 # 🖥️ Laboratorio 1 - Comandos UNIX en C
 
-**Estudiante:** Juan Camilo  
+**Estudiante:** Juan Esteban Cardozo Rivera  
 **Repositorio:** [github.com/JuanC101195/Laboratorio1](https://github.com/JuanC101195/Laboratorio1)  
 **Curso:** Sistemas Operativos  
 **Fecha:** Marzo 2026
@@ -560,7 +560,7 @@ gcc -o bin/wunzip src/wunzip.c -Wall -Werror
 
 ## 👤 Autor
 
-**Juan Camilo**  
+**Juan Esteban Cardozo Rivera**  
 GitHub: [@JuanC101195](https://github.com/JuanC101195)  
 Repositorio: [Laboratorio1](https://github.com/JuanC101195/Laboratorio1)
 
