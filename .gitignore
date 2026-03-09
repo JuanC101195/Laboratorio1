@@ -1,0 +1,43 @@
+# Archivos temporales generados durante las pruebas
+temp.z
+temp.txt
+output.z
+recuperado.txt
+*.tmp
+
+# Archivos de respaldo del editor
+*~
+*.swp
+*.swo
+*.bak
+
+# Archivos de depuración
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Archivos objeto y ejecutables (opcional, si decides no subir bin/)
+# Si quieres ignorar los ejecutables, descomenta las siguientes líneas:
+# bin/wcat
+# bin/wgrep
+# bin/wzip
+# bin/wunzip
+
+# Archivos de compilación
+*.o
+*.a
+*.so
+*.exe
+
+# Archivos de VS Code
+.vscode/
+*.code-workspace
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Archivos de prueba adicionales que no quieres versionar
+# test_output/
+# *.z (si no quieres versionar archivos comprimidos)
