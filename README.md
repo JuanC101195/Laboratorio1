@@ -5,6 +5,14 @@
 **Curso:** Sistemas Operativos  
 **Fecha:** Marzo 2026
 
+## 🔧 Tecnologías
+
+![C](https://img.shields.io/badge/Language-C-blue?logo=c)
+![GCC](https://img.shields.io/badge/Compiler-GCC-green)
+![Linux](https://img.shields.io/badge/OS-Linux-yellow?logo=linux)
+![UNIX](https://img.shields.io/badge/Paradigm-UNIX-orange)
+![Git](https://img.shields.io/badge/Version%20Control-Git-red?logo=git)
+
 ---
 
 ## 📋 Descripción General
